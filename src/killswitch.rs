@@ -2,8 +2,7 @@ use crate::contract::{update_position, update_stream};
 use crate::state::{Status, Stream, CONFIG, POSITIONS, STREAMS};
 use crate::ContractError;
 use cosmwasm_std::{
-    attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdResult, Timestamp,
-    Uint128,
+    attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw_utils::maybe_addr;
 
@@ -38,7 +37,7 @@ pub fn execute_withdraw_paused(
     update_position(
         stream.dist_index,
         stream.shares,
-        stream.last_updated,
+        stream.last_updated_block,
         stream.in_supply,
         &mut position,
     )?;
@@ -151,11 +150,11 @@ pub fn execute_pause_stream(
     }
     //check if stream is ended
     let stream = STREAMS.load(deps.storage, stream_id)?;
-    if env.block.time >= stream.end_time {
+    if env.block.height >= stream.end_block {
         return Err(ContractError::StreamEnded {});
     }
     // check if stream is not started
-    if env.block.time < stream.start_time {
+    if env.block.height < stream.start_block {
         return Err(ContractError::StreamNotStarted {});
     }
     // paused or cancelled can not be paused
@@ -164,20 +163,20 @@ pub fn execute_pause_stream(
     }
     // update stream before pause
     let mut stream = STREAMS.load(deps.storage, stream_id)?;
-    update_stream(env.block.time, &mut stream)?;
-    pause_stream(env.block.time, &mut stream)?;
+    update_stream(env.block.height, &mut stream)?;
+    pause_stream(env.block.height, &mut stream)?;
     STREAMS.save(deps.storage, stream_id, &stream)?;
 
     Ok(Response::default()
         .add_attribute("action", "pause_stream")
         .add_attribute("stream_id", stream_id.to_string())
         .add_attribute("is_paused", "true")
-        .add_attribute("pause_date", env.block.time.to_string()))
+        .add_attribute("pause_block", env.block.height.to_string()))
 }
 
-pub fn pause_stream(now: Timestamp, stream: &mut Stream) -> StdResult<()> {
+pub fn pause_stream(now_block: u64, stream: &mut Stream) -> StdResult<()> {
     stream.status = Status::Paused;
-    stream.pause_date = Some(now);
+    stream.pause_block = Some(now_block);
     Ok(())
 }
 
@@ -200,14 +199,10 @@ pub fn execute_resume_stream(
         return Err(ContractError::Unauthorized {});
     }
 
-    let pause_date = stream.pause_date.unwrap();
+    let pause_block = stream.pause_block.unwrap();
     //postpone stream times with respect to pause duration
-    stream.end_time = stream
-        .end_time
-        .plus_nanos(env.block.time.nanos() - pause_date.nanos());
-    stream.last_updated = stream
-        .last_updated
-        .plus_nanos(env.block.time.nanos() - pause_date.nanos());
+    stream.end_block = stream.end_block + (env.block.height - pause_block);
+    stream.last_updated_block = stream.last_updated_block + (env.block.height - pause_block);
 
     stream.status = Status::Active;
     STREAMS.save(deps.storage, stream_id, &stream)?;
@@ -272,19 +267,19 @@ pub fn sudo_pause_stream(
 ) -> Result<Response, ContractError> {
     let mut stream = STREAMS.load(deps.storage, stream_id)?;
 
-    if env.block.time >= stream.end_time {
+    if env.block.height >= stream.end_block {
         return Err(ContractError::StreamEnded {});
     }
     // check if stream is not started
-    if env.block.time < stream.start_time {
+    if env.block.height < stream.start_block {
         return Err(ContractError::StreamNotStarted {});
     }
     // Paused or cancelled can not be paused
     if stream.is_killswitch_active() {
         return Err(ContractError::StreamKillswitchActive {});
     }
-    update_stream(env.block.time, &mut stream)?;
-    pause_stream(env.block.time, &mut stream)?;
+    update_stream(env.block.height, &mut stream)?;
+    pause_stream(env.block.height, &mut stream)?;
     STREAMS.save(deps.storage, stream_id, &stream)?;
 
     Ok(Response::default()
@@ -309,23 +304,19 @@ pub fn sudo_resume_stream(
         return Err(ContractError::StreamNotPaused {});
     }
     // ok to use unwrap here
-    let pause_date = stream.pause_date.unwrap();
+    let pause_block = stream.pause_block.unwrap();
     //postpone stream times with respect to pause duration
-    stream.end_time = stream
-        .end_time
-        .plus_nanos(env.block.time.nanos() - pause_date.nanos());
-    stream.last_updated = stream
-        .last_updated
-        .plus_nanos(env.block.time.nanos() - pause_date.nanos());
+    stream.end_block = stream.end_block + (env.block.height - pause_block);
+    stream.last_updated_block = stream.last_updated_block + (env.block.height - pause_block);
 
     stream.status = Status::Active;
-    stream.pause_date = None;
+    stream.pause_block = None;
     STREAMS.save(deps.storage, stream_id, &stream)?;
 
     Ok(Response::default()
         .add_attribute("action", "resume_stream")
         .add_attribute("stream_id", stream_id.to_string())
-        .add_attribute("new_end_date", stream.end_time.to_string())
+        .add_attribute("new_end_date", stream.end_block.to_string())
         .add_attribute("status", "active"))
 }
 

@@ -86,11 +86,11 @@ pub enum ContractError {
     #[error("Stream starts too soon")]
     StreamStartsTooSoon {},
 
-    #[error("Invalid start time")]
-    StreamInvalidStartTime {},
+    #[error("Invalid start block")]
+    StreamInvalidStartBlock {},
 
-    #[error("Invalid end time")]
-    StreamInvalidEndTime {},
+    #[error("Invalid end block")]
+    StreamInvalidEndBlock {},
 
     #[error("Creation fee amount do not match the supplied funds")]
     StreamCreationFeeRequired {},
