@@ -8,17 +8,174 @@ mod test_module {
     };
     use crate::killswitch::{execute_pause_stream, execute_withdraw_paused, sudo_resume_stream};
     use crate::msg::ExecuteMsg::UpdateProtocolAdmin;
-    use crate::state::{Status, Stream};
+    use crate::msg::InstantiateMsg;
+    use crate::state::{Position, Status, Stream};
     use crate::ContractError;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{
+        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+    };
     use cosmwasm_std::StdError::{self};
     use cosmwasm_std::{
-        attr, coin, Addr, BankMsg, Coin, CosmosMsg, Decimal, Decimal256, Response, SubMsg,
-        Timestamp, Uint128, Uint64,
+        attr, coin, Addr, BankMsg, Coin, CosmosMsg, Decimal, Decimal256, MessageInfo, OwnedDeps,
+        Response, SubMsg, Timestamp, Uint128, Uint64,
     };
     use cw_utils::PaymentError;
+    use std::collections::HashMap;
+    use std::hash::Hash;
     use std::ops::Sub;
     use std::str::FromStr;
+
+    /// Helper structure for Suite configuration
+    #[derive(Default)]
+    struct SuiteConfig {
+        /// Minimum sale duration in unix seconds
+        pub min_stream_seconds: Uint64,
+        /// Minimum duration between start time and current time in unix seconds
+        pub min_seconds_until_start_time: Uint64,
+        /// Accepted stream creation fee denom
+        pub stream_creation_denom: String,
+        /// Stream creation fee amount
+        pub stream_creation_fee: Uint128,
+        /// in/buy token exit fee in percent
+        pub exit_fee_percent: Decimal,
+        /// Address of the fee collector
+        pub fee_collector: String,
+        /// protocol admin can pause streams in case of emergency.
+        pub protocol_admin: String,
+        /// Accepted in_denom to buy out_tokens
+        pub accepted_in_denom: String,
+
+        // test suite supports only one stream
+        pub stream_submit_block_height: Option<Timestamp>,
+        pub stream: Option<Stream>,
+
+        // Position by creation timestamp as key
+        // stream will be updated to latest position inserted in the test suite
+        pub positions: Option<HashMap<u64, Position>>,
+    }
+
+    impl SuiteConfig {
+        fn new() -> Self {
+            // valid values
+            Self {
+                min_stream_seconds: Uint64::new(1000),
+                min_seconds_until_start_time: Uint64::new(1000),
+                stream_creation_denom: "fee".to_string(),
+                stream_creation_fee: Uint128::new(100),
+                exit_fee_percent: Decimal::percent(1),
+                fee_collector: "collector".to_string(),
+                protocol_admin: "protocol_admin".to_string(),
+                accepted_in_denom: "in".to_string(),
+                stream_submit_block_height: None,
+                stream: None,
+                positions: None,
+            }
+        }
+
+        fn init(self) -> Suite {
+            Suite::init_with_config(self)
+        }
+
+        fn with_min_stream_seconds(mut self, min_stream_seconds: Uint64) -> Self {
+            self.min_stream_seconds = min_stream_seconds;
+            self
+        }
+
+        fn with_min_seconds_until_start_time(
+            mut self,
+            min_seconds_until_start_time: Uint64,
+        ) -> Self {
+            self.min_seconds_until_start_time = min_seconds_until_start_time;
+            self
+        }
+
+        fn with_stream_creation_denom(mut self, stream_creation_denom: String) -> Self {
+            self.stream_creation_denom = stream_creation_denom;
+            self
+        }
+
+        fn with_stream_creation_fee(mut self, stream_creation_fee: Uint128) -> Self {
+            self.stream_creation_fee = stream_creation_fee;
+            self
+        }
+
+        fn with_exit_fee_percent(mut self, exit_fee_percent: Decimal) -> Self {
+            self.exit_fee_percent = exit_fee_percent;
+            self
+        }
+
+        fn with_fee_collector(mut self, fee_collector: String) -> Self {
+            self.fee_collector = fee_collector;
+            self
+        }
+
+        fn with_protocol_admin(mut self, protocol_admin: String) -> Self {
+            self.protocol_admin = protocol_admin;
+            self
+        }
+
+        fn with_accepted_in_denom(mut self, accepted_in_denom: String) -> Self {
+            self.accepted_in_denom = accepted_in_denom;
+            self
+        }
+
+        fn with_stream_submit_block_height(
+            mut self,
+            stream_submit_block_height: Timestamp,
+        ) -> Self {
+            self.stream_submit_block_height = Some(stream_submit_block_height);
+            self
+        }
+
+        fn with_stream(mut self, stream: Stream) -> Self {
+            self.stream = Some(stream);
+            self
+        }
+
+        fn with_positions(mut self, positions: HashMap<u64, Position>) -> Self {
+            self.positions = Some(positions);
+            self
+        }
+    }
+
+    /// Test suite helper unifying test initialization, keeping access to created data
+    struct Suite {
+        deps: OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        owner: String,
+    }
+
+    impl Suite {
+        fn init() -> Self {
+            Self::init_with_config(SuiteConfig::default())
+        }
+
+        fn init_with_config(config: SuiteConfig) -> Self {
+            let mut deps = mock_dependencies();
+
+            let instantiate_msg = InstantiateMsg {
+                min_stream_seconds: config.min_stream_seconds,
+                min_seconds_until_start_time: config.min_seconds_until_start_time,
+                stream_creation_denom: config.stream_creation_denom,
+                stream_creation_fee: config.stream_creation_fee,
+                exit_fee_percent: config.exit_fee_percent,
+                fee_collector: config.fee_collector,
+                protocol_admin: config.protocol_admin,
+                accepted_in_denom: config.accepted_in_denom,
+            };
+
+            let owner = String::from("owner");
+
+            instantiate(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(&owner, &[]),
+                instantiate_msg,
+            )
+            .unwrap();
+
+            Self { deps, owner }
+        }
+    }
 
     #[test]
     fn test_compute_shares_amount() {
