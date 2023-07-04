@@ -8,7 +8,7 @@ mod test_module {
     };
     use crate::killswitch::{execute_pause_stream, execute_withdraw_paused, sudo_resume_stream};
     use crate::msg::ExecuteMsg::UpdateProtocolAdmin;
-    use crate::msg::InstantiateMsg;
+    use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::state::{Position, Status, Stream};
     use crate::ContractError;
     use cosmwasm_std::testing::{
@@ -44,14 +44,6 @@ mod test_module {
         pub protocol_admin: String,
         /// Accepted in_denom to buy out_tokens
         pub accepted_in_denom: String,
-
-        // test suite supports only one stream
-        pub stream_submit_block_height: Option<Timestamp>,
-        pub stream: Option<Stream>,
-
-        // Position by creation timestamp as key
-        // stream will be updated to latest position inserted in the test suite
-        pub positions: Option<HashMap<u64, Position>>,
     }
 
     impl SuiteConfig {
@@ -62,13 +54,10 @@ mod test_module {
                 min_seconds_until_start_time: Uint64::new(1000),
                 stream_creation_denom: "fee".to_string(),
                 stream_creation_fee: Uint128::new(100),
-                exit_fee_percent: Decimal::percent(1),
+                exit_fee_percent: Decimal::percent(101),
                 fee_collector: "collector".to_string(),
                 protocol_admin: "protocol_admin".to_string(),
                 accepted_in_denom: "in".to_string(),
-                stream_submit_block_height: None,
-                stream: None,
-                positions: None,
             }
         }
 
@@ -126,16 +115,6 @@ mod test_module {
             self.stream_submit_block_height = Some(stream_submit_block_height);
             self
         }
-
-        fn with_stream(mut self, stream: Stream) -> Self {
-            self.stream = Some(stream);
-            self
-        }
-
-        fn with_positions(mut self, positions: HashMap<u64, Position>) -> Self {
-            self.positions = Some(positions);
-            self
-        }
     }
 
     /// Test suite helper unifying test initialization, keeping access to created data
@@ -172,7 +151,6 @@ mod test_module {
                 instantiate_msg,
             )
             .unwrap();
-
             Self { deps, owner }
         }
     }
@@ -752,6 +730,33 @@ mod test_module {
             end_time,
         )
         .unwrap();
+
+        let Suite { mut deps, .. } = SuiteConfig::new().init();
+        let mut env = mock_env();
+        env.block.time = Timestamp::from_seconds(1);
+        let info = mock_info(
+            "creator1",
+            &[
+                Coin::new(out_supply.u128(), "out_denom"),
+                Coin::new(100, "fee"),
+            ],
+        );
+        execute_create_stream(
+            deps.as_mut(),
+            env,
+            info,
+            treasury.to_string(),
+            name.to_string(),
+            Some(url.to_string()),
+            in_denom.to_string(),
+            out_denom.to_string(),
+            out_supply,
+            start_time,
+            end_time,
+        )
+            .unwrap();
+
+
 
         // query stream with id
         let env = mock_env();
