@@ -68,6 +68,8 @@ pub struct Stream {
     pub stream_creation_fee: Uint128,
     /// Stream swap fee in percent. Saved under here to avoid any changes in config to efect existing streams.
     pub stream_exit_fee_percent: Decimal,
+    /// Target price for the stream. If set, seller can decide to cancel stream if target price is not met.
+    pub target_price: Option<Decimal>,
 }
 
 #[cw_serde]
@@ -78,6 +80,7 @@ pub enum Status {
     Finalized,
     Paused,
     Cancelled,
+    ThresholdNotMet,
 }
 #[allow(clippy::too_many_arguments)]
 impl Stream {
@@ -94,6 +97,7 @@ impl Stream {
         stream_creation_denom: String,
         stream_creation_fee: Uint128,
         stream_exit_fee_percent: Decimal,
+        target_price: Option<Decimal>,
     ) -> Self {
         Stream {
             name,
@@ -116,6 +120,7 @@ impl Stream {
             stream_creation_denom,
             stream_creation_fee,
             stream_exit_fee_percent,
+            target_price,
         }
     }
 
@@ -142,7 +147,7 @@ impl Stream {
     }
 
     pub fn is_killswitch_active(&self) -> bool {
-        self.status == Status::Cancelled || self.status == Status::Paused
+        self.status == Status::Cancelled || self.status == Status::Paused || self.status == Status::ThresholdNotMet
     }
 }
 type StreamId = u64;

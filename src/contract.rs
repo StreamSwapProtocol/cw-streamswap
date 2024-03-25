@@ -15,6 +15,7 @@ use semver::Version;
 use crate::helpers::{check_name_and_url, from_semver, get_decimals};
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, must_pay};
+use crate::killswitch::execute_threshold_cancel_stream;
 
 // Version and contract info for migration
 const CONTRACT_NAME: &str = "crates.io:cw-streamswap";
@@ -82,6 +83,7 @@ pub fn execute(
             out_supply,
             start_block,
             end_block,
+            target_price,
         } => execute_create_stream(
             deps,
             env,
@@ -94,6 +96,7 @@ pub fn execute(
             out_supply,
             start_block,
             end_block,
+            target_price,
         ),
         ExecuteMsg::UpdateOperator {
             stream_id,
@@ -210,6 +213,7 @@ pub fn execute(
             accepted_in_denom,
             exit_fee_percent,
         ),
+        ExecuteMsg::ThresholdCancelStream { stream_id } => execute_threshold_cancel_stream(deps, env, info, stream_id)
     }
 }
 #[allow(clippy::too_many_arguments)]
@@ -225,6 +229,7 @@ pub fn execute_create_stream(
     out_supply: Uint128,
     start_block: u64,
     end_block: u64,
+    target_price: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if end_block <= start_block {
@@ -311,6 +316,7 @@ pub fn execute_create_stream(
         config.stream_creation_denom,
         config.stream_creation_fee,
         config.exit_fee_percent,
+        target_price,
     );
     let id = next_stream_id(deps.storage)?;
     STREAMS.save(deps.storage, id, &stream)?;
@@ -952,6 +958,7 @@ pub fn execute_exit_stream(
     if stream.last_updated_block < stream.end_block {
         update_stream(env.block.height, &mut stream)?;
     }
+
     let operator_target =
         maybe_addr(deps.api, operator_target)?.unwrap_or_else(|| info.sender.clone());
     let mut position = POSITIONS.load(deps.storage, (stream_id, &operator_target))?;
@@ -965,6 +972,12 @@ pub fn execute_exit_stream(
         stream.in_supply,
         &mut position,
     )?;
+    if let Some(target_price) = stream.target_price {
+        if stream.current_streamed_price < target_price {
+            return Err(ContractError::StreamThresholdPriceNotMet {});
+        }
+    }
+
     // Swap fee = fixed_rate*position.spent_in this calculation is only for execution reply attributes
     let swap_fee = Decimal::from_ratio(position.spent, Uint128::one())
         .checked_mul(stream.stream_exit_fee_percent)?

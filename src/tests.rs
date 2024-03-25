@@ -6,7 +6,7 @@ mod test_module {
         execute_update_operator, execute_update_position, execute_update_stream, instantiate,
         query_average_price, query_config, query_last_streamed_price, query_position, query_stream,
     };
-    use crate::killswitch::{execute_pause_stream, execute_withdraw_paused, sudo_resume_stream};
+    use crate::killswitch::{execute_cancel_stream, execute_pause_stream, execute_withdraw_paused, sudo_resume_stream};
     use crate::msg::ExecuteMsg::UpdateProtocolAdmin;
     use crate::state::{Status, Stream};
     use crate::ContractError;
@@ -35,6 +35,7 @@ mod test_module {
             "fee".to_string(),
             Uint128::from(100u128),
             Decimal::percent(10),
+            None,
         );
 
         // add new shares
@@ -128,6 +129,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::InDenomIsNotAccepted {}));
         // end < start case
@@ -154,6 +156,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamInvalidEndBlock {}));
 
@@ -176,6 +179,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamDurationTooShort {}));
 
@@ -197,6 +201,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamInvalidStartBlock {}));
 
@@ -218,6 +223,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamStartsTooSoon {}));
 
@@ -239,6 +245,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::SameDenomOnEachSide {}));
 
@@ -260,6 +267,7 @@ mod test_module {
             Uint128::new(0),
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::ZeroOutSupply {}));
 
@@ -282,6 +290,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::NoFundsSent {}));
 
@@ -303,6 +312,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamOutSupplyFundsRequired {}));
 
@@ -328,6 +338,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamCreationFeeRequired {}));
 
@@ -347,6 +358,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::NoFundsSent {}));
 
@@ -366,6 +378,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::NoFundsSent {}));
 
@@ -385,6 +398,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         );
         assert_eq!(res, Err(ContractError::StreamOutSupplyFundsRequired {}));
 
@@ -404,6 +418,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap();
 
@@ -426,6 +441,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(err, ContractError::InvalidFunds {});
@@ -453,6 +469,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(err, ContractError::InvalidFunds {});
@@ -479,6 +496,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(res, ContractError::StreamNameTooShort {});
@@ -495,6 +513,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(res, ContractError::StreamNameTooLong {});
@@ -511,6 +530,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(res, ContractError::InvalidStreamName {});
@@ -537,6 +557,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
         assert_eq!(res, ContractError::StreamUrlTooShort {});
@@ -553,6 +574,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
             .unwrap_err();
         assert_eq!(res, ContractError::StreamUrlTooLong {});
@@ -569,6 +591,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap_err();
 
@@ -596,6 +619,7 @@ mod test_module {
             out_supply,
             start_block,
             end_block,
+            None,
         )
         .unwrap();
 
@@ -650,6 +674,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -791,6 +816,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -967,6 +993,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1117,6 +1144,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1358,6 +1386,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1450,6 +1479,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1558,6 +1588,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1721,6 +1752,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1860,6 +1892,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -1983,6 +2016,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
         // First subscription
@@ -2084,6 +2118,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -2188,6 +2223,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -2299,6 +2335,7 @@ mod test_module {
             out_supply,
             start,
             end,
+            None,
         )
         .unwrap();
 
@@ -2617,6 +2654,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -2779,6 +2817,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -2921,6 +2960,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3030,6 +3070,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3218,6 +3259,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3304,6 +3346,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3382,6 +3425,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
             //second stream
@@ -3397,6 +3441,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3475,6 +3520,7 @@ mod test_module {
                 out_supply,
                 start,
                 end,
+                None,
             )
             .unwrap();
 
@@ -3567,5 +3613,103 @@ mod test_module {
                 })
             );
         }
+    }
+
+    #[test]
+    fn test_threshold_not_met() {
+        let treasury = Addr::unchecked("treasury");
+        let start = 1_000_000;
+        let end = 5_000_000;
+        let out_supply = Uint128::new(1_000_000_000_000);
+        let out_denom = "out_denom";
+
+        // instantiate
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+        env.block.height = 0;
+        let msg = crate::msg::InstantiateMsg {
+            min_stream_blocks: 1_000,
+            min_blocks_until_start_block: 1_000,
+            stream_creation_denom: "fee".to_string(),
+            stream_creation_fee: Uint128::new(100),
+            exit_fee_percent: Decimal::percent(1),
+            fee_collector: "collector".to_string(),
+            protocol_admin: "protocol_admin".to_string(),
+            accepted_in_denom: "in".to_string(),
+        };
+        instantiate(deps.as_mut(), mock_env(), mock_info("creator", &[]), msg).unwrap();
+
+        // create stream
+        let mut env = mock_env();
+        env.block.height = 1;
+        let info = mock_info(
+            "creator1",
+            &[
+                Coin::new(out_supply.u128(), out_denom),
+                Coin::new(100, "fee"),
+            ],
+        );
+        execute_create_stream(
+            deps.as_mut(),
+            env,
+            info,
+            treasury.to_string(),
+            "test".to_string(),
+            Some("https://sample.url".to_string()),
+            "in".to_string(),
+            out_denom.to_string(),
+            out_supply,
+            start,
+            end,
+            Some(Decimal::percent(200)),
+        )
+            .unwrap();
+
+        // subscription
+        let mut env = mock_env();
+        env.block.height = start;
+        let funds = Coin::new(2_000_000_000, "in");
+        let info = mock_info("creator1", &[funds]);
+        let msg = crate::msg::ExecuteMsg::Subscribe {
+            stream_id: 1,
+            operator_target: None,
+            operator: Some("operator".to_string()),
+        };
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        // after sale ends, users can't exit
+
+        // pause
+        let mut env = mock_env();
+        env.block.height = start + 2_000_000;
+        let info = mock_info("protocol_admin", &[]);
+        (deps.as_mut(), env, info, 1).unwrap();
+
+        // cancel
+        let info = mock_info("protocol_admin", &[]);
+        let mut env = mock_env();
+        env.block.height = start + 2_500_000;
+        let response = execute_cancel_stream(deps.as_mut(), env, info, 1).unwrap();
+        // out_tokens and the creation fee are sent back to the treasury upon cancellation
+        assert_eq!(
+            response.messages,
+            vec![
+                SubMsg::new(BankMsg::Send {
+                    to_address: treasury.to_string(),
+                    amount: vec![Coin::new(1_000_000_000_000, out_denom)],
+                }),
+                SubMsg::new(BankMsg::Send {
+                    to_address: treasury.to_string(),
+                    amount: vec![Coin::new(100, "fee")],
+                }),
+            ]
+        );
+
+        // can't cancel cancelled stream
+        let info = mock_info("protocol_admin", &[]);
+        let mut env = mock_env();
+        env.block.height = start + 2_500_000;
+        let response = execute_cancel_stream(deps.as_mut(), env, info, 1).unwrap_err();
+        assert_eq!(response, ContractError::StreamIsCancelled {});
     }
 }

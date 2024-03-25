@@ -260,6 +260,57 @@ pub fn execute_cancel_stream(
         .add_attribute("status", "cancelled"))
 }
 
+pub fn execute_threshold_cancel_stream(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    stream_id: u64,
+) -> Result<Response, ContractError> {
+    let mut stream = STREAMS.load(deps.storage, stream_id)?;
+
+    // check if stream is ended
+    if env.block.height >= stream.end_block {
+        return Err(ContractError::StreamEnded {});
+    }
+    update_stream(env.block.height, &mut stream)?;
+
+    if let Some(target_price) = stream.target_price {
+        if stream.current_streamed_price > target_price {
+            return Err(ContractError::StreamThresholdPriceNotMet {});
+        }
+    } else {
+        return Err(ContractError::StreamThresholdPriceNotSet {});
+    }
+
+    stream.status = Status::ThresholdNotMet;
+    STREAMS.save(deps.storage, stream_id, &stream)?;
+
+    //Refund all out tokens to stream creator(treasury)
+    let messages: Vec<CosmosMsg> = vec![
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: stream.treasury.to_string(),
+            amount: vec![Coin {
+                denom: stream.out_denom,
+                amount: stream.out_supply,
+            }],
+        }),
+        //Refund stream creation fee to stream creator
+        CosmosMsg::Bank(BankMsg::Send {
+            to_address: stream.treasury.to_string(),
+            amount: vec![Coin {
+                denom: stream.stream_creation_denom,
+                amount: stream.stream_creation_fee,
+            }],
+        }),
+    ];
+
+    Ok(Response::new()
+        .add_attribute("action", "threshold_cancel_stream")
+        .add_messages(messages)
+        .add_attribute("stream_id", stream_id.to_string())
+        .add_attribute("status", "cancelled"))
+}
+
 pub fn sudo_pause_stream(
     deps: DepsMut,
     env: Env,

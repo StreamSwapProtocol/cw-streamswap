@@ -148,4 +148,10 @@ pub enum ContractError {
 
     #[error("Invalid exit fee")]
     InvalidStreamExitFee {},
+
+    #[error("Stream threshold price not set")]
+    StreamThresholdPriceNotSet {},
+
+    #[error("Stream threshold price met")]
+    StreamThresholdPriceNotMet {},
 }
