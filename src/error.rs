@@ -152,4 +152,7 @@ pub enum ContractError {
 
     #[error("Invalid exit fee")]
     InvalidStreamExitFee {},
+
+    #[error("Stream Create Pool is invalid")]
+    InvalidCreatePool {},
 }

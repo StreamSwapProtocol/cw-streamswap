@@ -4,9 +4,11 @@ use crate::msg::{
     MigrateMsg, PositionResponse, PositionsResponse, QueryMsg, StreamResponse, StreamsResponse,
     SudoMsg,
 };
-use crate::state::{next_stream_id, Config, Position, Status, Stream, CONFIG, POSITIONS, STREAMS};
+use crate::state::{
+    next_stream_id, Config, CreatePool, Position, Status, Stream, CONFIG, POSITIONS, STREAMS,
+};
 use crate::threshold::ThresholdState;
-use crate::{killswitch, ContractError};
+use crate::{helpers, killswitch, ContractError};
 use cosmwasm_std::{
     attr, entry_point, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Decimal256,
     Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Timestamp,
@@ -14,10 +16,15 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
+use std::str::FromStr;
 
 use crate::helpers::{check_name_and_url, from_semver, get_decimals};
 use cw_storage_plus::Bound;
-use cw_utils::{maybe_addr, must_pay};
+use cw_utils::{maybe_addr, must_pay, NativeBalance};
+
+use osmosis_std::types::cosmos::base;
+use osmosis_std::types::osmosis::concentratedliquidity::v1beta1::MsgCreatePosition;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::PoolmanagerQuerier;
 
 // Version and contract info for migration
 const CONTRACT_NAME: &str = "crates.io:cw-streamswap";
@@ -49,6 +56,7 @@ pub fn instantiate(
         fee_collector: deps.api.addr_validate(&msg.fee_collector)?,
         protocol_admin: deps.api.addr_validate(&msg.protocol_admin)?,
         accepted_in_denom: msg.accepted_in_denom,
+        pool_creation_denom: msg.pool_creation_denom,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -86,9 +94,21 @@ pub fn execute(
             start_time,
             end_time,
             threshold,
+            create_pool,
         } => execute_create_stream(
-            deps, env, info, treasury, name, url, in_denom, out_denom, out_supply, start_time,
-            end_time, threshold,
+            deps,
+            env,
+            info,
+            treasury,
+            name,
+            url,
+            in_denom,
+            out_denom,
+            out_supply,
+            start_time,
+            end_time,
+            threshold,
+            create_pool,
         ),
         ExecuteMsg::UpdateOperator {
             stream_id,
@@ -224,6 +244,7 @@ pub fn execute_create_stream(
     start_time: Timestamp,
     end_time: Timestamp,
     threshold: Option<Uint128>,
+    create_pool: Option<CreatePool>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if end_time < start_time {
@@ -252,50 +273,42 @@ pub fn execute_create_stream(
         return Err(ContractError::ZeroOutSupply {});
     }
 
-    if out_denom == config.stream_creation_denom {
-        let total_funds = info
-            .funds
-            .iter()
-            .find(|p| p.denom == config.stream_creation_denom)
-            .ok_or(ContractError::NoFundsSent {})?;
+    let mut expected_balance = NativeBalance(vec![]);
+    // add out_denom
+    expected_balance += Coin {
+        denom: out_denom.clone(),
+        amount: out_supply,
+    };
+    expected_balance += Coin {
+        denom: config.stream_creation_denom.clone(),
+        amount: config.stream_creation_fee,
+    };
 
-        if total_funds.amount != config.stream_creation_fee + out_supply {
-            return Err(ContractError::StreamOutSupplyFundsRequired {});
-        }
-        // check for extra funds sent in msg
-        if info.funds.iter().any(|p| p.denom != out_denom) {
-            return Err(ContractError::InvalidFunds {});
-        }
-    } else {
-        let funds = info
-            .funds
-            .iter()
-            .find(|p| p.denom == out_denom)
-            .ok_or(ContractError::NoFundsSent {})?;
+    if let Some(pool) = &create_pool {
+        let params = PoolmanagerQuerier::new(&deps.querier)
+            .params()?
+            .params
+            .unwrap();
+        let pool_creation_fee = params.pool_creation_fee.get(0).unwrap();
+        expected_balance += Coin {
+            denom: pool_creation_fee.denom.clone(),
+            amount: Uint128::from_str(pool_creation_fee.amount.as_str())?,
+        };
+        expected_balance += Coin {
+            denom: out_denom.clone(),
+            amount: pool.out_amount_clp,
+        };
+    }
 
-        if funds.amount != out_supply {
-            return Err(ContractError::StreamOutSupplyFundsRequired {});
-        }
-
-        let creation_fee = info
-            .funds
-            .iter()
-            .find(|p| p.denom == config.stream_creation_denom)
-            .ok_or(ContractError::NoFundsSent {})?;
-        if creation_fee.amount != config.stream_creation_fee {
-            return Err(ContractError::StreamCreationFeeRequired {});
-        }
-
-        if info
-            .funds
-            .iter()
-            .any(|p| p.denom != out_denom && p.denom != config.stream_creation_denom)
-        {
-            return Err(ContractError::InvalidFunds {});
-        }
+    let mut funds_balance = NativeBalance(info.funds.clone());
+    funds_balance.normalize();
+    if expected_balance != funds_balance {
+        return Err(ContractError::InvalidFunds {});
     }
 
     check_name_and_url(&name, &url)?;
+
+    helpers::check_create_pool_flag(out_supply, &create_pool)?;
 
     let stream = Stream::new(
         name.clone(),
@@ -310,6 +323,7 @@ pub fn execute_create_stream(
         config.stream_creation_denom,
         config.stream_creation_fee,
         config.exit_fee_percent,
+        create_pool,
     );
     let id = next_stream_id(deps.storage)?;
     STREAMS.save(deps.storage, id, &stream)?;
@@ -872,6 +886,7 @@ pub fn execute_finalize_stream(
 
     let creator_revenue = stream.spent_in.checked_sub(swap_fee)?;
 
+    let mut messages = vec![];
     //Creator's revenue claimed at finalize
     let revenue_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: treasury.to_string(),
@@ -880,6 +895,7 @@ pub fn execute_finalize_stream(
             amount: creator_revenue,
         }],
     });
+    messages.push(revenue_msg);
     //Exact fee for stream creation charged at creation but claimed at finalize
     let creation_fee_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: config.fee_collector.to_string(),
@@ -888,32 +904,65 @@ pub fn execute_finalize_stream(
             amount: stream.stream_creation_fee,
         }],
     });
+    messages.push(creation_fee_msg.clone());
 
     let swap_fee_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: config.fee_collector.to_string(),
         amount: vec![Coin {
-            denom: stream.in_denom,
+            denom: stream.in_denom.clone(),
             amount: swap_fee,
         }],
     });
+    messages.push(swap_fee_msg);
 
-    let mut messages = if stream.spent_in != Uint128::zero() {
-        vec![revenue_msg, creation_fee_msg, swap_fee_msg]
-    } else {
-        vec![creation_fee_msg]
-    };
+    // if no spent, charge only creation fee
+    if stream.spent_in == Uint128::zero() {
+        messages = vec![creation_fee_msg]
+    }
 
-    // In case the stream is ended without any shares in it. We need to refund the remaining out tokens although that is unlikely to happen
+    // In case the stream is ended without any shares in it. We need to refund the remaining out
+    // tokens although that is unlikely to happen
     if stream.out_remaining > Uint128::zero() {
         let remaining_out = stream.out_remaining;
         let remaining_msg = CosmosMsg::Bank(BankMsg::Send {
             to_address: treasury.to_string(),
             amount: vec![Coin {
-                denom: stream.out_denom,
+                denom: stream.out_denom.clone(),
                 amount: remaining_out,
             }],
         });
         messages.push(remaining_msg);
+    }
+
+    if let Some(pool) = stream.create_pool {
+        messages.push(pool.msg_create_pool.into());
+
+        // amount of in tokens allocated for clp
+        let in_clp = (pool.out_amount_clp / stream.out_supply) * stream.spent_in;
+        let current_num_of_pools = PoolmanagerQuerier::new(&deps.querier)
+            .num_pools()?
+            .num_pools;
+        let pool_id = current_num_of_pools + 1;
+
+        let create_initial_position_msg = MsgCreatePosition {
+            pool_id,
+            sender: treasury.to_string(),
+            lower_tick: 0,
+            upper_tick: i64::MAX,
+            tokens_provided: vec![
+                base::v1beta1::Coin {
+                    denom: stream.in_denom,
+                    amount: in_clp.to_string(),
+                },
+                base::v1beta1::Coin {
+                    denom: stream.out_denom,
+                    amount: pool.out_amount_clp.to_string(),
+                },
+            ],
+            token_min_amount0: "0".to_string(),
+            token_min_amount1: "0".to_string(),
+        };
+        messages.push(create_initial_position_msg.into());
     }
 
     Ok(Response::new().add_messages(messages).add_attributes(vec![

@@ -1,5 +1,6 @@
+use crate::state::CreatePool;
 use crate::ContractError;
-use cosmwasm_std::{Decimal256, StdError};
+use cosmwasm_std::{Decimal256, StdError, Uint128};
 use std::str::FromStr;
 
 /// Stream validation related constants
@@ -58,4 +59,16 @@ pub fn check_name_and_url(name: &String, url: &Option<String>) -> Result<(), Con
 
 pub fn from_semver(err: semver::Error) -> ContractError {
     ContractError::from(StdError::generic_err(format!("Semver: {}", err)))
+}
+
+pub fn check_create_pool_flag(
+    out_amount: Uint128,
+    flag: &Option<CreatePool>,
+) -> Result<(), ContractError> {
+    if let Some(pool) = flag {
+        if out_amount < pool.out_amount_clp {
+            return Err(ContractError::InvalidCreatePool {});
+        }
+    }
+    Ok(())
 }

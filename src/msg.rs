@@ -1,4 +1,4 @@
-use crate::state::Status;
+use crate::state::{CreatePool, Status};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Decimal256, Timestamp, Uint128, Uint64};
 
@@ -20,6 +20,8 @@ pub struct InstantiateMsg {
     pub protocol_admin: String,
     /// Accepted in_denom to buy out_tokens
     pub accepted_in_denom: String,
+    /// Pool creation denom
+    pub pool_creation_denom: String,
 }
 
 #[cw_serde]
@@ -47,6 +49,8 @@ pub enum ExecuteMsg {
         end_time: Timestamp,
         /// Minimum amount of `spent_in` for a stream to be finalized.
         threshold: Option<Uint128>,
+        /// CreatePool Flag
+        create_pool: Option<CreatePool>,
     },
     /// Update stream and calculates distribution state.
     UpdateStream {
