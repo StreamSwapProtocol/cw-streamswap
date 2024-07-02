@@ -28,6 +28,9 @@ pub enum ContractError {
     #[error("{0}")]
     ConversionOverflowError(#[from] ConversionOverflowError),
 
+    #[error("{0}")]
+    DenomError(#[from] cw_denom::DenomError),
+
     #[error("Invalid exit fee percent")]
     InvalidExitFeePercent {},
 

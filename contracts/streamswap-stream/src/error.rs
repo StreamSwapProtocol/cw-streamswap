@@ -1,4 +1,7 @@
-use cosmwasm_std::{ConversionOverflowError, DivideByZeroError, OverflowError, StdError, Uint128};
+use cosmwasm_std::{
+    ConversionOverflowError, DivideByZeroError, Instantiate2AddressError, OverflowError, StdError,
+    Uint128,
+};
 use cw_utils::PaymentError;
 use std::convert::Infallible;
 use thiserror::Error;
@@ -29,6 +32,9 @@ pub enum ContractError {
     ConversionOverflowError(#[from] ConversionOverflowError),
     #[error("No rewards accrued")]
     NoDistribution {},
+
+    #[error("{0}")]
+    Instantiate2AddressError(#[from] Instantiate2AddressError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -134,6 +140,9 @@ pub enum ContractError {
 
     #[error("Stream name is not in alphanumeric format")]
     InvalidStreamName {},
+
+    #[error("Salt not provided for vesting creation")]
+    InvalidSalt {},
 
     #[error("Stream URL too short")]
     StreamUrlTooShort {},

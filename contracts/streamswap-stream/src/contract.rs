@@ -3,15 +3,16 @@ use crate::msg::{
     AveragePriceResponse, ExecuteMsg, LatestStreamedPriceResponse, PositionResponse,
     PositionsResponse, QueryMsg, StreamResponse, SudoMsg,
 };
-use crate::state::{Position, Status, Stream, POSITIONS, STREAM};
+use crate::state::{Position, Status, Stream, POSITIONS, STREAM, VESTING};
 use crate::threshold::ThresholdState;
 use crate::{killswitch, ContractError};
 use cosmwasm_std::{
-    attr, entry_point, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Decimal256,
-    Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Timestamp,
-    Uint128, Uint256,
+    attr, coin, entry_point, to_json_binary, Addr, Attribute, BankMsg, Binary, CodeInfoResponse,
+    Coin, CosmosMsg, Decimal, Decimal256, Deps, DepsMut, Env, Fraction, MessageInfo, Order,
+    Response, StdError, StdResult, SubMsg, Timestamp, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_vesting::msg::InstantiateMsg as VestingInstantiateMsg;
 use streamswap_factory::msg::CreateStreamMsg;
 use streamswap_factory::state::Params as FactoryParams;
 use streamswap_factory::state::PARAMS as FACTORYPARAMS;
@@ -23,6 +24,8 @@ use cw_utils::{maybe_addr, must_pay};
 // Version and contract info for migration
 const CONTRACT_NAME: &str = "crates.io:streamswap";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const REPLY_ID: u64 = 1337;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -51,6 +54,7 @@ pub fn instantiate(
         in_denom,
         stream_admin,
         create_pool,
+        vesting,
     } = msg;
 
     if start_time > end_time {
@@ -81,6 +85,7 @@ pub fn instantiate(
         end_time,
         start_time,
         create_pool,
+        vesting,
     );
     STREAM.save(deps.storage, &stream)?;
 
@@ -168,9 +173,10 @@ pub fn execute(
         ExecuteMsg::FinalizeStream { new_treasury } => {
             execute_finalize_stream(deps, env, info, new_treasury)
         }
-        ExecuteMsg::ExitStream { operator_target } => {
-            execute_exit_stream(deps, env, info, operator_target)
-        }
+        ExecuteMsg::ExitStream {
+            operator_target,
+            salt,
+        } => execute_exit_stream(deps, env, info, operator_target, salt),
 
         ExecuteMsg::PauseStream {} => killswitch::execute_pause_stream(deps, env, info),
         ExecuteMsg::ResumeStream {} => killswitch::execute_resume_stream(deps, env, info),
@@ -753,6 +759,7 @@ pub fn execute_exit_stream(
     env: Env,
     info: MessageInfo,
     operator_target: Option<String>,
+    salt: Option<Binary>,
 ) -> Result<Response, ContractError> {
     let mut stream = STREAM.load(deps.storage)?;
     let factory_params = FACTORYPARAMS.load(deps.storage)?;
@@ -784,28 +791,72 @@ pub fn execute_exit_stream(
         stream.in_supply,
         &mut position,
     )?;
-    // Swap fee = fixed_rate*position.spent_in this calculation is only for execution reply attributes
-    let swap_fee = Decimal::from_ratio(position.spent, Uint128::one())
-        .checked_mul(factory_params.exit_fee_percent)?
-        * Uint128::one();
-    let send_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: operator_target.to_string(),
-        amount: vec![Coin {
-            denom: stream.out_asset.denom.to_string(),
-            amount: position.purchased,
-        }],
-    });
     stream.shares = stream.shares.checked_sub(position.shares)?;
 
     STREAM.save(deps.storage, &stream)?;
     POSITIONS.remove(deps.storage, &position.owner);
 
-    let attributes = vec![
-        attr("action", "exit_stream"),
-        attr("spent", position.spent.checked_sub(swap_fee)?),
-        attr("purchased", position.purchased),
-        attr("swap_fee_paid", swap_fee),
-    ];
+    // Swap fee = fixed_rate*position.spent_in this calculation is only for execution reply attributes
+    let swap_fee = Decimal::from_ratio(position.spent, Uint128::one())
+        .checked_mul(factory_params.exit_fee_percent)?
+        * Uint128::one();
+
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    let mut attrs: Vec<Attribute> = vec![];
+
+    // if vesting is set, instantiate a vested release contract for user and send
+    // the out tokens to the contract
+    if let Some(mut vesting) = stream.vesting {
+        let salt = salt.ok_or(ContractError::InvalidSalt {})?;
+
+        // prepare vesting msg
+        vesting.start_time = Some(stream.end_time);
+        // TODO: check if we want an owner?
+        vesting.owner = None;
+        vesting.recipient = operator_target.to_string();
+        vesting.total = position.purchased;
+
+        // prepare instantiate msg msg
+        let CodeInfoResponse { checksum, .. } = deps
+            .querier
+            .query_wasm_code_info(factory_params.vesting_code_id)?;
+        let creator = deps.api.addr_canonicalize(env.contract.address.as_str())?;
+
+        // Calculate the address of the new contract
+        let address = deps.api.addr_humanize(&cosmwasm_std::instantiate2_address(
+            checksum.as_ref(),
+            &creator,
+            &salt,
+        )?)?;
+
+        VESTING.save(deps.storage, operator_target.clone(), &address)?;
+
+        let vesting_instantiate_msg = WasmMsg::Instantiate2 {
+            admin: None,
+            code_id: factory_params.vesting_code_id,
+            label: format!(
+                "streamswap: Stream Addr {} Released to {}",
+                env.contract.address.to_string(),
+                operator_target.to_string()
+            ),
+            msg: to_json_binary(&vesting)?,
+            funds: vec![coin(position.purchased.u128(), stream.out_asset.denom)],
+            salt,
+        };
+
+        msgs.push(vesting_instantiate_msg.into());
+        attrs.push(attr("vesting_address", address));
+    } else {
+        let send_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: operator_target.to_string(),
+            amount: vec![Coin {
+                denom: stream.out_asset.denom.to_string(),
+                amount: position.purchased,
+            }],
+        });
+        msgs.push(send_msg);
+    }
+    // if there is any unspent in balance, send it back to the user
     if !position.in_balance.is_zero() {
         let unspent = position.in_balance;
         let unspent_msg = CosmosMsg::Bank(BankMsg::Send {
@@ -815,16 +866,17 @@ pub fn execute_exit_stream(
                 amount: unspent,
             }],
         });
-
-        Ok(Response::new()
-            .add_message(send_msg)
-            .add_message(unspent_msg)
-            .add_attributes(attributes))
-    } else {
-        Ok(Response::new()
-            .add_message(send_msg)
-            .add_attributes(attributes))
+        msgs.push(unspent_msg);
     }
+
+    attrs.extend(vec![
+        attr("action", "exit_stream"),
+        attr("spent", position.spent.checked_sub(swap_fee)?),
+        attr("purchased", position.purchased),
+        attr("swap_fee_paid", swap_fee),
+    ]);
+
+    Ok(Response::new().add_messages(msgs).add_attributes(attrs))
 }
 
 fn check_access(

@@ -13,12 +13,15 @@ license    = "Apache-2.0"
 authors = ["Orkun Külçe <orkunkl@users.noreply.github.com>", "Adnan Deniz Çorlu<adenizcorlu@gmail.com"]
 
 [workspace.dependencies]
-cosmwasm-std = "1.1.9"
-cosmwasm-schema = "1.1.9"
-cw-controllers= " 1.0.1"
+cosmwasm-std = { version = "1.5.5",  features = ["iterator", "staking", "stargate", "cosmwasm_1_2"] }
+cosmwasm-schema = "1.2.0"
+cw-controllers = " 1.0.1"
 cw-storage-plus = "1.0.1"
+cw-multi-test= { version = "0.20.1", features = ["cosmwasm_1_2"]}
+cw-denom = "2.3.0"
 cw-utils = "1.0.1"
 cw2 = "1.0.1 "
+cw-vesting = { version = "2.3.0", features = ["library"] }
 schemars = "0.8.11"
 serde = { version = "1.0.152", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.38" }

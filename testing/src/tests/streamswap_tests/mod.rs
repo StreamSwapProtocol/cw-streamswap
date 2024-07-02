@@ -11,6 +11,7 @@ mod subscribe;
 mod threshold;
 mod update_position;
 mod update_stream;
+mod vesting;
 mod withdraw;
 mod withdraw_paused;
 // #[cfg(test)]

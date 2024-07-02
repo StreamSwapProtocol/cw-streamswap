@@ -27,6 +27,7 @@ pub fn instantiate(
         min_stream_seconds,
         min_seconds_until_start_time,
         pool_creation_denom,
+        vesting_code_id,
     } = msg;
 
     let protocol_admin = deps
@@ -47,6 +48,7 @@ pub fn instantiate(
         stream_creation_fee: stream_creation_fee.clone(),
         exit_fee_percent,
         stream_swap_code_id,
+        vesting_code_id,
         accepted_in_denoms,
         fee_collector,
         min_stream_seconds: min_stream_seconds.into(),
@@ -124,6 +126,7 @@ pub fn execute_create_stream(
         threshold: _,
         url: _,
         create_pool: _,
+        vesting,
     } = msg.clone();
     let params = PARAMS.load(deps.storage)?;
     let stream_creation_fee = params.stream_creation_fee.clone();

@@ -1,6 +1,6 @@
 use crate::state::Status;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Coin, Decimal, Decimal256, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, Decimal256, Timestamp, Uint128};
 use streamswap_factory::state::Params as FactoryParams;
 
 #[cw_serde]
@@ -41,6 +41,8 @@ pub enum ExecuteMsg {
     ExitStream {
         /// operator_target is the address of operator targets to execute on behalf of the user.
         operator_target: Option<String>,
+        /// Salt is required for vested address generation
+        salt: Option<Binary>,
     },
     //
     // Killswitch features

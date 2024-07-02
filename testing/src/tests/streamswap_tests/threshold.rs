@@ -22,12 +22,13 @@ mod treshold_tests {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
         let start_time = app.block_info().time.plus_seconds(1_000_000).into();
         let end_time = app.block_info().time.plus_seconds(5_000_000).into();
         let threshold = Uint128::from(250u128);
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -48,6 +49,7 @@ mod treshold_tests {
             start_time,
             end_time,
             Some(threshold),
+            None,
             None,
         );
 
@@ -85,6 +87,7 @@ mod treshold_tests {
         // Threshold should be reached
         let exit_msg = StreamSwapExecuteMsg::ExitStream {
             operator_target: None,
+            salt: None,
         };
 
         let res = app
@@ -129,12 +132,13 @@ mod treshold_tests {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
         let start_time = app.block_info().time.plus_seconds(1_000_000).into();
         let end_time = app.block_info().time.plus_seconds(5_000_000).into();
         let threshold = Uint128::from(500u128);
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -155,6 +159,7 @@ mod treshold_tests {
             start_time,
             end_time,
             Some(threshold),
+            None,
             None,
         );
 
@@ -201,6 +206,7 @@ mod treshold_tests {
         // Exit should not be possible
         let exit_msg = StreamSwapExecuteMsg::ExitStream {
             operator_target: None,
+            salt: None,
         };
 
         let _res = app
@@ -330,12 +336,13 @@ mod treshold_tests {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
         let start_time = app.block_info().time.plus_seconds(1_000_000).into();
         let end_time = app.block_info().time.plus_seconds(5_000_000).into();
         let threshold = Uint128::from(500u128);
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -356,6 +363,7 @@ mod treshold_tests {
             start_time,
             end_time,
             Some(threshold),
+            None,
             None,
         );
 

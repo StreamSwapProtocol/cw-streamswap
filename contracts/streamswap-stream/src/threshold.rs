@@ -126,6 +126,7 @@ mod tests {
             treasury: Addr::unchecked("treasury"),
             stream_admin: Addr::unchecked("admin"),
             create_pool: None,
+            vesting: None,
         };
         let threshold = Uint128::new(1_500_000_000_000);
 

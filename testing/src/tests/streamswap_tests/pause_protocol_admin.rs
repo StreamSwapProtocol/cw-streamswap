@@ -25,8 +25,9 @@ mod pause_protocol_admin {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -48,6 +49,7 @@ mod pause_protocol_admin {
             "in_denom",
             start_time,
             end_time,
+            None,
             None,
             None,
         );
@@ -94,8 +96,9 @@ mod pause_protocol_admin {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -117,6 +120,7 @@ mod pause_protocol_admin {
             "in_denom",
             start_time,
             end_time,
+            None,
             None,
             None,
         );
@@ -177,8 +181,9 @@ mod pause_protocol_admin {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -200,6 +205,7 @@ mod pause_protocol_admin {
             "in_denom",
             start_time,
             end_time,
+            None,
             None,
             None,
         );
@@ -251,8 +257,9 @@ mod pause_protocol_admin {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -274,6 +281,7 @@ mod pause_protocol_admin {
             "in_denom",
             start_time,
             end_time,
+            None,
             None,
             None,
         );
@@ -432,6 +440,7 @@ mod pause_protocol_admin {
         // can't exit
         let exit_stream_msg = StreamSwapExecuteMsg::ExitStream {
             operator_target: None,
+            salt: None,
         };
         let res = app
             .execute_contract(

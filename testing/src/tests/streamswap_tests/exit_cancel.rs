@@ -16,9 +16,10 @@ mod exit_cancel {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -42,6 +43,7 @@ mod exit_cancel {
             start_time,
             end_time,
             Some(Uint128::from(100u128)),
+            None,
             None,
         );
 
@@ -101,9 +103,10 @@ mod exit_cancel {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -127,6 +130,7 @@ mod exit_cancel {
             start_time,
             end_time,
             Some(Uint128::from(100u128)),
+            None,
             None,
         );
 
@@ -204,9 +208,10 @@ mod exit_cancel {
             test_accounts,
             stream_swap_code_id,
             stream_swap_factory_code_id,
+            vesting_code_id,
         } = setup();
 
-        let msg = get_factory_inst_msg(stream_swap_code_id, &test_accounts);
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
         let factory_address = app
             .instantiate_contract(
                 stream_swap_factory_code_id,
@@ -230,6 +235,7 @@ mod exit_cancel {
             start_time,
             end_time,
             Some(Uint128::from(100u128)),
+            None,
             None,
         );
 

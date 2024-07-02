@@ -16,12 +16,13 @@ backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
 cosmwasm-schema      = { workspace = true }
-cosmwasm-std = { version = "1.5.2", features = ["iterator", "staking", "stargate"] }
+cosmwasm-std = { workspace = true }
 cw-controllers       = { workspace = true }
 cw2                  = { workspace = true }
 streamswap-stream = { workspace = true }
 streamswap-factory = { workspace = true }
 cw-storage-plus = "1.2.0"
 cw-utils = "1.0.3"
+cw-vesting = { workspace = true }
 schemars = "0.8.16"
-cw-multi-test = "0.20.0"
+cw-multi-test = { workspace = true }
