@@ -1,5 +1,7 @@
 use crate::threshold::ThresholdError;
-use cosmwasm_std::{ConversionOverflowError, DivideByZeroError, OverflowError, StdError, Uint128};
+use cosmwasm_std::{
+    ConversionOverflowError, DivideByZeroError, OverflowError, StdError, Uint128, Uint256,
+};
 use cw_utils::PaymentError;
 use std::convert::Infallible;
 use thiserror::Error;
@@ -55,7 +57,7 @@ pub enum ContractError {
     StreamOutSupplyFundsRequired {},
 
     #[error("Withdraw amount exceeds user balance: {0}")]
-    WithdrawAmountExceedsBalance(Uint128),
+    WithdrawAmountExceedsBalance(Uint256),
 
     #[error("Withdraw amount cannot be zero")]
     InvalidWithdrawAmount {},

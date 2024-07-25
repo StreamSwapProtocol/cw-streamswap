@@ -1,6 +1,6 @@
 use crate::state::Status;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Decimal256, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, Decimal256, Timestamp, Uint128, Uint256, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,7 +13,7 @@ pub struct InstantiateMsg {
     /// Stream creation fee amount
     pub stream_creation_fee: Uint128,
     /// in/buy token exit fee in percent
-    pub exit_fee_percent: Decimal,
+    pub exit_fee_percent: Decimal256,
     /// Address of the fee collector
     pub fee_collector: String,
     /// protocol admin can pause streams in case of emergency.
@@ -40,13 +40,13 @@ pub enum ExecuteMsg {
         /// Also known as a base currency.
         out_denom: String,
         /// Total number of `token_out` to be sold during the continuous stream.
-        out_supply: Uint128,
+        out_supply: Uint256,
         /// Unix timestamp when the stream starts. Calculations in nano sec precision.
         start_time: Timestamp,
         /// Unix timestamp when the stream ends. Calculations in nano sec precision.
         end_time: Timestamp,
         /// Minimum amount of `spent_in` for a stream to be finalized.
-        threshold: Option<Uint128>,
+        threshold: Option<Uint256>,
     },
     /// Update stream and calculates distribution state.
     UpdateStream {
@@ -75,7 +75,7 @@ pub enum ExecuteMsg {
     /// Withdraw unspent tokens in balance.
     Withdraw {
         stream_id: u64,
-        cap: Option<Uint128>,
+        cap: Option<Uint256>,
         /// operator_target is the address of operator targets to execute on behalf of the user.
         operator_target: Option<String>,
     },
@@ -111,7 +111,7 @@ pub enum ExecuteMsg {
     /// WithdrawPaused is used to withdraw unspent position funds during pause.
     WithdrawPaused {
         stream_id: u64,
-        cap: Option<Uint128>,
+        cap: Option<Uint256>,
         // operator_target is the address of operator targets to execute on behalf of the user.
         operator_target: Option<String>,
     },
@@ -132,7 +132,7 @@ pub enum ExecuteMsg {
         stream_creation_fee: Option<Uint128>,
         fee_collector: Option<String>,
         accepted_in_denom: Option<String>,
-        exit_fee_percent: Option<Decimal>,
+        exit_fee_percent: Option<Decimal256>,
     },
     ResumeStream {
         stream_id: u64,
@@ -190,7 +190,7 @@ pub struct ConfigResponse {
     /// Creation fee amount.
     pub stream_creation_fee: Uint128,
     /// This percentage represents the fee that will be collected from the investors.
-    pub exit_fee_percent: Decimal,
+    pub exit_fee_percent: Decimal256,
     /// Address of the fee collector.
     pub fee_collector: String,
     /// Address of the protocol admin.
@@ -211,29 +211,29 @@ pub struct StreamResponse {
     /// denom of the `token_out`.
     pub out_denom: String,
     /// total number of `token_out` to be sold during the continuous stream.
-    pub out_supply: Uint128,
+    pub out_supply: Uint256,
     /// total number of remaining out tokens at the time of update.
-    pub out_remaining: Uint128,
+    pub out_remaining: Uint256,
     /// denom of the `token_in`.
     pub in_denom: String,
     /// total number of `token_in` on the buy side at latest state.
-    pub in_supply: Uint128,
+    pub in_supply: Uint256,
     /// total number of `token_in` spent at latest state.
-    pub spent_in: Uint128,
+    pub spent_in: Uint256,
     /// total number of shares minted.
-    pub shares: Uint128,
+    pub shares: Uint256,
     /// start time when the token emission starts. in nanos.
     pub start_time: Timestamp,
     /// end time when the token emission ends.
     pub end_time: Timestamp,
     /// price at when latest distribution is triggered.
-    pub current_streamed_price: Decimal,
+    pub current_streamed_price: Decimal256,
     /// Status of the stream. Can be `Waiting`, `Active`, `Finalzed`, `Paused` or `Canceled` for kill switch.
     pub status: Status,
     /// Date when the stream was paused.
     pub pause_date: Option<Timestamp>,
     /// Exit fee percent.
-    pub exit_fee_percent: Decimal,
+    pub exit_fee_percent: Decimal256,
     /// Creation fee amount.
     pub stream_creation_fee: Uint128,
 }
@@ -249,17 +249,17 @@ pub struct PositionResponse {
     /// creator of the position.
     pub owner: String,
     /// current amount of tokens in buy pool
-    pub in_balance: Uint128,
-    pub shares: Uint128,
+    pub in_balance: Uint256,
+    pub shares: Uint256,
     // index is used to calculate the distribution a position has
     pub index: Decimal256,
     pub last_updated: Timestamp,
     // total amount of `token_out` purchased in tokens at latest calculation
-    pub purchased: Uint128,
+    pub purchased: Uint256,
     // pending purchased accumulates purchases after decimal truncation
     pub pending_purchase: Decimal256,
     // total amount of `token_in` spent tokens at latest calculation
-    pub spent: Uint128,
+    pub spent: Uint256,
     // operator can update position
     pub operator: Option<Addr>,
 }
@@ -271,12 +271,12 @@ pub struct PositionsResponse {
 
 #[cw_serde]
 pub struct AveragePriceResponse {
-    pub average_price: Decimal,
+    pub average_price: Decimal256,
 }
 
 #[cw_serde]
 pub struct LatestStreamedPriceResponse {
-    pub current_streamed_price: Decimal,
+    pub current_streamed_price: Decimal256,
 }
 
 #[cw_serde]

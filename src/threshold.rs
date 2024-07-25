@@ -1,10 +1,10 @@
-use cosmwasm_std::{StdError, Storage, Uint128};
+use cosmwasm_std::{StdError, Storage, Uint256};
 use cw_storage_plus::Map;
 use thiserror::Error;
 
 use crate::state::Stream;
 
-pub type Threshold = Uint128;
+pub type Threshold = Uint256;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ThresholdError {
@@ -33,7 +33,7 @@ impl<'a> ThresholdState<'a> {
     }
     pub fn set_threshold_if_any(
         &self,
-        threshold: Option<Uint128>,
+        threshold: Option<Uint256>,
         stream_id: u64,
         storage: &mut dyn Storage,
     ) -> Result<(), ThresholdError> {
@@ -117,38 +117,38 @@ mod tests {
         let mut storage = MockStorage::new();
         let thresholds = ThresholdState::new();
         let mut stream = Stream {
-            out_supply: Uint128::new(1000),
-            in_supply: Uint128::new(1000),
+            out_supply: Uint256::from(1000u128),
+            in_supply: Uint256::from(1000u128),
             start_time: Timestamp::from_seconds(0),
             end_time: Timestamp::from_seconds(100),
-            current_streamed_price: Decimal::percent(100),
+            current_streamed_price: Decimal256::percent(100),
             dist_index: Decimal256::one(),
             in_denom: "uusd".to_string(),
             last_updated: Timestamp::from_seconds(0),
             name: "test".to_string(),
             url: Some("test".to_string()),
             out_denom: "uluna".to_string(),
-            out_remaining: Uint128::new(1000),
+            out_remaining: Uint256::from(1000u128),
             pause_date: None,
-            shares: Uint128::new(0),
-            spent_in: Uint128::new(0),
+            shares: Uint256::zero(),
+            spent_in: Uint256::zero(),
             status: crate::state::Status::Active,
             stream_creation_denom: "uusd".to_string(),
             stream_creation_fee: Uint128::new(0),
-            stream_exit_fee_percent: Decimal::from_str("0.042").unwrap(),
+            stream_exit_fee_percent: Decimal256::from_str("0.042").unwrap(),
             treasury: Addr::unchecked("treasury"),
         };
-        let threshold = Uint128::new(1_500_000_000_000);
+        let threshold = Uint256::from(1_500_000_000_000u128);
         let stream_id = 1;
 
         thresholds
             .set_threshold_if_any(Some(threshold), stream_id, &mut storage)
             .unwrap();
 
-        stream.spent_in = Uint128::new(1_500_000_000_000 - 1);
+        stream.spent_in = Uint256::from(1_500_000_000_000u128 - 1);
         let result = thresholds.error_if_not_reached(stream_id, &storage, &stream.clone());
         assert_eq!(result.is_err(), true);
-        stream.spent_in = Uint128::new(1_500_000_000_000);
+        stream.spent_in = Uint256::from(1_500_000_000_000u128);
         let result = thresholds.error_if_not_reached(stream_id, &storage, &stream.clone());
         assert_eq!(result.is_err(), false);
     }

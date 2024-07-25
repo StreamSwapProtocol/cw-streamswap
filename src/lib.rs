@@ -5,6 +5,7 @@ pub mod contract;
 mod error;
 mod helpers;
 mod killswitch;
+mod migrate_v0_2_1;
 pub mod msg;
 pub mod state;
 #[cfg(test)]
