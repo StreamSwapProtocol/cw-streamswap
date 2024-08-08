@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod treshold_tests {
+mod threshold {
 
     use crate::helpers::suite::SuiteBuilder;
     use crate::helpers::utils::{get_contract_address_from_res, get_funds_from_res};
@@ -18,7 +18,7 @@ mod treshold_tests {
     use streamswap_types::stream::{Status, Stream, ThresholdState};
 
     #[test]
-    fn test_thresholds_state() {
+    fn thresholds_state() {
         let mut storage = MockStorage::new();
         let thresholds = ThresholdState::new();
         let mut stream = Stream::new(
@@ -52,7 +52,7 @@ mod treshold_tests {
         assert!(result.is_ok());
     }
     #[test]
-    fn test_threshold_reached() {
+    fn threshold_reached() {
         let Suite {
             mut app,
             test_accounts,
@@ -174,7 +174,7 @@ mod treshold_tests {
     }
 
     #[test]
-    fn test_threshold_not_reached() {
+    fn threshold_not_reached() {
         let Suite {
             mut app,
             test_accounts,
@@ -386,7 +386,7 @@ mod treshold_tests {
     }
 
     #[test]
-    fn test_threshold_cancel() {
+    fn threshold_cancel() {
         let Suite {
             mut app,
             test_accounts,

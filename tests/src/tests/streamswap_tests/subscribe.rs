@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod subscibe_test {
+mod subscribe {
 
     use std::str::FromStr;
 
@@ -21,7 +21,7 @@ mod subscibe_test {
     };
 
     #[test]
-    fn test_first_subcription() {
+    fn first_subscription() {
         let Suite {
             mut app,
             test_accounts,
@@ -174,7 +174,7 @@ mod subscibe_test {
         assert_eq!(stream.shares, Uint256::from(150u128));
     }
     #[test]
-    fn test_recurring_subscribe() {
+    fn recurring_subscribe() {
         let Suite {
             mut app,
             test_accounts,
@@ -346,7 +346,7 @@ mod subscibe_test {
     }
 
     #[test]
-    fn test_subscribe_bootstapping() {
+    fn subscribe_bootstrapping() {
         let Suite {
             mut app,
             test_accounts,
@@ -631,7 +631,7 @@ mod subscibe_test {
         assert_eq!(position.spent, Uint256::from(84u128));
     }
     #[test]
-    fn test_subscibe_waiting() {
+    fn subscribe_waiting() {
         let Suite {
             mut app,
             test_accounts,

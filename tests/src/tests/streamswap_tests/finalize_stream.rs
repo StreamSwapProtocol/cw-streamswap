@@ -13,7 +13,7 @@ mod finalize_stream_tests {
     };
 
     #[test]
-    fn test_recurring_finalize_stream_calls() {
+    fn recurring_finalize_stream_calls() {
         let Suite {
             mut app,
             test_accounts,
@@ -127,7 +127,7 @@ mod finalize_stream_tests {
     }
 
     #[test]
-    fn test_finalize_authorizations() {
+    fn finalize_authorizations() {
         let Suite {
             mut app,
             test_accounts,
@@ -243,7 +243,7 @@ mod finalize_stream_tests {
     }
 
     #[test]
-    fn test_finalize_with_new_treasury() {
+    fn finalize_with_new_treasury() {
         let Suite {
             mut app,
             test_accounts,

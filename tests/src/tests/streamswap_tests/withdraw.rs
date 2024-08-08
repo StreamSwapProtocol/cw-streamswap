@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod withdraw_tests {
+mod withdraw {
 
     #[cfg(test)]
     use crate::helpers::mock_messages::{get_create_stream_msg, get_factory_inst_msg};
@@ -14,7 +14,7 @@ mod withdraw_tests {
     };
 
     #[test]
-    fn test_withdraw_bootstapping() {
+    fn withdraw_bootstrapping() {
         let suite = SuiteBuilder::default().build();
         let test_accounts = suite.test_accounts;
         let mut app = suite.app;
@@ -212,7 +212,7 @@ mod withdraw_tests {
     }
 
     #[test]
-    fn test_withdraw_all_before_exit_case() {
+    fn withdraw_all_before_exit_case() {
         let suite = SuiteBuilder::default().build();
         let test_accounts = suite.test_accounts;
         let mut app = suite.app;
@@ -361,7 +361,7 @@ mod withdraw_tests {
             .unwrap();
     }
     #[test]
-    fn test_withdraw() {
+    fn withdraw() {
         let suite = SuiteBuilder::default().build();
         let test_accounts = suite.test_accounts;
         let mut app = suite.app;
@@ -514,5 +514,104 @@ mod withdraw_tests {
                 .unwrap(),
             Uint128::from(500u128)
         );
+    }
+
+    #[test]
+    fn withdraw_after_cancellation() {
+        let suite = SuiteBuilder::default().build();
+        let test_accounts = suite.test_accounts;
+        let mut app = suite.app;
+
+        // Instantiate stream swap
+        let stream_swap_code_id = suite.stream_swap_code_id;
+        let stream_swap_factory_code_id = suite.stream_swap_factory_code_id;
+        let vesting_code_id = suite.vesting_code_id;
+        let msg = get_factory_inst_msg(stream_swap_code_id, vesting_code_id, &test_accounts);
+        let factory_address = app
+            .instantiate_contract(
+                stream_swap_factory_code_id,
+                test_accounts.admin.clone(),
+                &msg,
+                &[],
+                "Factory".to_string(),
+                None,
+            )
+            .unwrap();
+        let start_time = app.block_info().time.plus_seconds(100);
+        let end_time = app.block_info().time.plus_seconds(200);
+        let bootstrapping_start_time = app.block_info().time.plus_seconds(50);
+
+        let create_stream_msg = get_create_stream_msg(
+            "Stream Swap tests",
+            None,
+            test_accounts.creator_1.as_ref(),
+            coin(1_000_000, "out_denom"),
+            "in_denom",
+            bootstrapping_start_time,
+            start_time,
+            end_time,
+            None,
+            None,
+            None,
+        );
+
+        let res = app
+            .execute_contract(
+                test_accounts.creator_1.clone(),
+                factory_address,
+                &create_stream_msg,
+                &[coin(100, "fee_denom"), coin(1_000_000, "out_denom")],
+            )
+            .unwrap();
+        let stream_swap_contract_address = get_contract_address_from_res(res);
+
+        // Set time to start time
+        app.set_block(BlockInfo {
+            height: 50,
+            time: start_time.plus_seconds(10),
+            chain_id: "test".to_string(),
+        });
+
+        // Subscribe to stream
+        let subscribe_msg = StreamSwapExecuteMsg::Subscribe {};
+        let _res = app
+            .execute_contract(
+                test_accounts.subscriber_1.clone(),
+                Addr::unchecked(stream_swap_contract_address.clone()),
+                &subscribe_msg,
+                &[coin(1_000, "in_denom")],
+            )
+            .unwrap();
+
+        app.set_block(BlockInfo {
+            height: 50,
+            time: start_time.plus_seconds(50),
+            chain_id: "test".to_string(),
+        });
+
+        // Cancel the stream
+        let _res = app
+            .execute_contract(
+                test_accounts.admin.clone(),
+                Addr::unchecked(stream_swap_contract_address.clone()),
+                &StreamSwapExecuteMsg::CancelStream {},
+                &[],
+            )
+            .unwrap();
+
+        // Attempt to withdraw after cancellation
+        let err = app
+            .execute_contract(
+                test_accounts.subscriber_1.clone(),
+                Addr::unchecked(stream_swap_contract_address.clone()),
+                &StreamSwapExecuteMsg::Withdraw { cap: None },
+                &[],
+            )
+            .unwrap_err();
+
+        let error = err.source().unwrap();
+        let error = error.downcast_ref::<StreamSwapError>().unwrap();
+        // TODO: change error type
+        assert_eq!(error, &StreamSwapError::StreamNotStarted {});
     }
 }

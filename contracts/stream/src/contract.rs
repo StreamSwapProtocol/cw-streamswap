@@ -700,48 +700,6 @@ pub fn query_stream(deps: Deps, _env: Env) -> StdResult<StreamResponse> {
     Ok(stream)
 }
 
-// // settings for pagination
-// const MAX_LIMIT: u32 = 30;
-// const DEFAULT_LIMIT: u32 = 10;
-
-// pub fn list_streams(
-//     deps: Deps,
-//     start_after: Option<u64>,
-//     limit: Option<u32>,
-// ) -> StdResult<StreamsResponse> {
-//     let start = start_after.map(Bound::exclusive);
-//     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-//     let streams: StdResult<Vec<StreamResponse>> = STREAMS
-//         .range(deps.storage, start, None, Order::Ascending)
-//         .take(limit)
-//         .map(|item| {
-//             let (stream_id, stream) = item?;
-//             let stream = StreamResponse {
-//                 id: stream_id,
-//                 treasury: stream.treasury.to_string(),
-//                 in_denom: stream.in_denom,
-//                 out_asset: stream.out_asset,
-//                 start_time: stream.start_time,
-//                 end_time: stream.end_time,
-//                 last_updated: stream.last_updated,
-//                 spent_in: stream.spent_in,
-//                 dist_index: stream.dist_index,
-//                 out_remaining: stream.out_remaining,
-//                 in_supply: stream.in_supply,
-//                 shares: stream.shares,
-//                 status: stream.status,
-//                 pause_date: stream.pause_date,
-//                 url: stream.url,
-//                 current_streamed_price: stream.current_streamed_price,
-//                 stream_admin: stream.stream_admin.into_string(),
-//             };
-//             Ok(stream)
-//         })
-//         .collect();
-//     let streams = streams?;
-//     Ok(StreamsResponse { streams })
-// }
-
 pub fn query_position(deps: Deps, _env: Env, owner: String) -> StdResult<PositionResponse> {
     let owner = deps.api.addr_validate(&owner)?;
     let position = POSITIONS.load(deps.storage, &owner)?;

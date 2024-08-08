@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod update_position_tests {
+mod update_position {
 
     use std::str::FromStr;
 

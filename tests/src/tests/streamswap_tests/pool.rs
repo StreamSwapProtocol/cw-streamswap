@@ -10,7 +10,7 @@ mod pool_tests {
     use streamswap_types::stream::ExecuteMsg;
 
     #[test]
-    fn test_pool_creation() {
+    fn pool_creation() {
         let Suite {
             mut app,
             test_accounts,

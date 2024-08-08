@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod update_stream_tests {
+mod update_stream {
 
     use std::str::FromStr;
 
@@ -377,7 +377,7 @@ mod update_stream_tests {
     }
 
     #[test]
-    fn test_price_feed() {
+    fn price_feed() {
         let Suite {
             mut app,
             test_accounts,

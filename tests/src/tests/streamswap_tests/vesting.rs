@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod vesting_tests {
+mod vesting {
     use crate::helpers::mock_messages::{get_create_stream_msg, get_factory_inst_msg};
     use crate::helpers::suite::{Suite, SuiteBuilder};
     use crate::helpers::utils::{
@@ -15,7 +15,7 @@ mod vesting_tests {
     };
 
     #[test]
-    fn test_vesting() {
+    fn vesting() {
         let Suite {
             mut app,
             test_accounts,
